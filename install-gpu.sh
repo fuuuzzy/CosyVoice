@@ -13,13 +13,6 @@ echo "  - NVIDIA GPU (CUDA 12.1)"
 echo "  - Python 3.10"
 echo ""
 
-mkdir -p pretrained_models
-git clone https://www.modelscope.cn/iic/CosyVoice2-0.5B.git pretrained_models/CosyVoice2-0.5B
-git clone https://www.modelscope.cn/iic/CosyVoice-300M.git pretrained_models/CosyVoice-300M
-git clone https://www.modelscope.cn/iic/CosyVoice-300M-SFT.git pretrained_models/CosyVoice-300M-SFT
-git clone https://www.modelscope.cn/iic/CosyVoice-300M-Instruct.git pretrained_models/CosyVoice-300M-Instruct
-git clone https://www.modelscope.cn/iic/CosyVoice-ttsfrd.git pretrained_models/CosyVoice-ttsfrd
-
 # 检查是否在 Linux 上
 if [[ "$OSTYPE" != "linux-gnu"* ]]; then
     echo "❌ 错误: 此脚本只能在 Linux 系统上运行"
