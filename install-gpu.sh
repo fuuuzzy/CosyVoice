@@ -1,5 +1,6 @@
 #!/bin/bash
 # CosyVoice GPU 服务器安装脚本 (Linux + CUDA 12.1)
+# 强制使用 Python 3.10
 
 set -e
 
@@ -10,7 +11,7 @@ echo ""
 echo "系统要求："
 echo "  - Linux 操作系统"
 echo "  - NVIDIA GPU (CUDA 12.1)"
-echo "  - Python 3.10"
+echo "  - Python 3.10 (uv 会自动下载)"
 echo ""
 
 # 检查是否在 Linux 上
@@ -20,6 +21,12 @@ if [[ "$OSTYPE" != "linux-gnu"* ]]; then
     exit 1
 fi
 
+# 检查 uv 是否安装
+if ! command -v uv &> /dev/null; then
+    echo "❌ 错误: 未找到 uv"
+    echo "请先安装 uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    exit 1
+fi
 
 # 检查 CUDA
 if command -v nvidia-smi &> /dev/null; then
@@ -38,22 +45,37 @@ echo "  2) 完整 GPU 版本 (基础 + vLLM 加速)"
 echo ""
 read -p "请输入选项 [1-2]: " choice
 
+echo ""
+echo "================================================"
+echo "开始安装..."
+echo "================================================"
+echo ""
+
+# 删除现有虚拟环境以确保使用正确的 Python 版本
+if [ -d ".venv" ]; then
+    echo "删除现有虚拟环境..."
+    rm -rf .venv
+fi
+
 case $choice in
     1)
-        echo ""
         echo "安装基础 GPU 版本..."
-        echo "1/2 安装核心依赖..."
-        uv sync
+        echo ""
+        echo "1/2 安装核心依赖 (强制使用 Python 3.10)..."
+        uv sync --python 3.10
+        echo ""
         echo "2/2 安装 GPU 加速组件..."
         uv pip install -r requirements-gpu.txt
         ;;
     2)
-        echo ""
         echo "安装完整 GPU 版本（包含 vLLM）..."
-        echo "1/3 安装核心依赖..."
-        uv sync
+        echo ""
+        echo "1/3 安装核心依赖 (强制使用 Python 3.10)..."
+        uv sync --python 3.10
+        echo ""
         echo "2/3 安装 GPU 加速组件..."
         uv pip install -r requirements-gpu.txt
+        echo ""
         echo "3/3 安装 vLLM..."
         uv pip install -r requirements-vllm.txt
         ;;
@@ -68,6 +90,19 @@ echo "================================================"
 echo "✅ 安装完成！"
 echo "================================================"
 echo ""
+
+# 验证 Python 版本
+source .venv/bin/activate
+PYTHON_VERSION=$(python --version)
+echo "已安装的 Python 版本: $PYTHON_VERSION"
+
+if [[ ! $PYTHON_VERSION =~ "Python 3.10" ]]; then
+    echo ""
+    echo "⚠️  警告: Python 版本不是 3.10"
+    echo "   如果遇到问题，请删除 .venv 并重新运行此脚本"
+fi
+
+echo ""
 echo "已安装的 GPU 组件："
 echo "  - DeepSpeed (分布式训练)"
 echo "  - ONNX Runtime GPU (CUDA 加速推理)"
@@ -75,15 +110,14 @@ echo "  - TensorRT (高性能推理)"
 if [ "$choice" = "2" ]; then
     echo "  - vLLM (大语言模型加速)"
 fi
-
-cd pretrained_models/CosyVoice-ttsfrd/
-unzip resource.zip -d .
-uv pip install ttsfrd_dependency-0.1-py3-none-any.whl
-uv pip install ttsfrd-0.4.2-cp310-cp310-linux_x86_64.whl
-
 echo ""
 echo "使用方法："
 echo "  激活环境: source .venv/bin/activate"
 echo "  运行示例: uv run python vllm_example.py"
+echo "  语音克隆: uv run python voice_clone.py --text \"你好\" --reference audio.wav"
 echo "  启动 WebUI: uv run python webui.py --port 50000 --model_dir pretrained_models/CosyVoice2-0.5B"
+echo ""
+echo "下载模型 (可选):"
+echo "  mkdir -p pretrained_models"
+echo "  git clone https://www.modelscope.cn/iic/CosyVoice2-0.5B.git pretrained_models/CosyVoice2-0.5B"
 echo ""
