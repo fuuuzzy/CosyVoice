@@ -1,0 +1,9 @@
+# GPU 加速依赖 (Linux + CUDA 12.1)
+# 安装方法: uv pip install -r requirements-gpu.txt
+--extra-index-url https://download.pytorch.org/whl/cu121
+--extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
+
+onnxruntime-gpu==1.18.0
+tensorrt-cu12==10.0.1
+tensorrt-cu12-bindings==10.0.1
+tensorrt-cu12-libs==10.0.1

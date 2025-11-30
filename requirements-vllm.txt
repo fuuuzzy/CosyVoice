@@ -1,0 +1,6 @@
+# vLLM 加速推理 (Linux + GPU)
+# 需要先安装 requirements-gpu.txt
+# 安装方法: uv pip install -r requirements-vllm.txt
+vllm==0.9.0
+transformers==4.51.3
+
