@@ -89,7 +89,18 @@ case $choice in
         
         echo ""
         echo "步骤 5: 安装 GPU 加速组件..."
-        uv pip install -r requirements-gpu.txt
+        echo "  5.1 安装 TensorRT 依赖库..."
+        uv pip install tensorrt-cu12-libs==10.0.1 tensorrt-cu12-bindings==10.0.1 \
+            --extra-index-url https://pypi.nvidia.com \
+            --no-build-isolation
+        
+        echo "  5.2 安装 TensorRT 主包..."
+        uv pip install tensorrt-cu12==10.0.1 \
+            --extra-index-url https://pypi.nvidia.com \
+            --no-build-isolation
+        
+        echo "  5.3 安装 ONNX Runtime GPU..."
+        uv pip install onnxruntime-gpu==1.18.0
         ;;
     2)
         echo "步骤 4: 安装核心依赖..."
@@ -97,7 +108,18 @@ case $choice in
         
         echo ""
         echo "步骤 5: 安装 GPU 加速组件..."
-        uv pip install -r requirements-gpu.txt
+        echo "  5.1 安装 TensorRT 依赖库..."
+        uv pip install tensorrt-cu12-libs==10.0.1 tensorrt-cu12-bindings==10.0.1 \
+            --extra-index-url https://pypi.nvidia.com \
+            --no-build-isolation
+        
+        echo "  5.2 安装 TensorRT 主包..."
+        uv pip install tensorrt-cu12==10.0.1 \
+            --extra-index-url https://pypi.nvidia.com \
+            --no-build-isolation
+        
+        echo "  5.3 安装 ONNX Runtime GPU..."
+        uv pip install onnxruntime-gpu==1.18.0
         
         echo ""
         echo "步骤 6: 安装 vLLM..."
