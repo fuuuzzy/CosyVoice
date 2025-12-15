@@ -168,6 +168,6 @@ echo "     git clone https://www.modelscope.cn/iic/CosyVoice2-0.5B.git pretraine
 echo ""
 echo "  3. 运行示例:"
 echo "     python vllm_example.py"
-echo "     python voice_clone.py --text \"你好\" --reference audio.wav"
+echo "     python voice_clone.py --text 'こんにちは' --reference ../segment_004.wav"
 echo "     python webui.py --port 50000 --model_dir pretrained_models/CosyVoice2-0.5B"
 echo ""
