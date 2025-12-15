@@ -90,12 +90,12 @@ case $choice in
         echo ""
         echo "步骤 5: 安装 GPU 加速组件..."
         echo "  5.1 安装 TensorRT 依赖库..."
-        uv pip install tensorrt-cu12-libs==10.0.1 tensorrt-cu12-bindings==10.0.1 \
+        uv pip install tensorrt-cu12-libs==10.13.3.9 tensorrt-cu12-bindings==10.13.3.9 \
             --extra-index-url https://pypi.nvidia.com \
             --no-build-isolation
         
         echo "  5.2 安装 TensorRT 主包..."
-        uv pip install tensorrt-cu12==10.0.1 \
+        uv pip install tensorrt-cu12==10.13.3.9 \
             --extra-index-url https://pypi.nvidia.com \
             --no-build-isolation
         
@@ -109,12 +109,12 @@ case $choice in
         echo ""
         echo "步骤 5: 安装 GPU 加速组件..."
         echo "  5.1 安装 TensorRT 依赖库..."
-        uv pip install tensorrt-cu12-libs==10.0.1 tensorrt-cu12-bindings==10.0.1 \
+        uv pip install tensorrt-cu12-libs==10.13.3.9 tensorrt-cu12-bindings==10.13.3.9 \
             --extra-index-url https://pypi.nvidia.com \
             --no-build-isolation
         
         echo "  5.2 安装 TensorRT 主包..."
-        uv pip install tensorrt-cu12==10.0.1 \
+        uv pip install tensorrt-cu12==10.13.3.9 \
             --extra-index-url https://pypi.nvidia.com \
             --no-build-isolation
         

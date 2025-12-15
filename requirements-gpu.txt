@@ -4,12 +4,12 @@
 --extra-index-url https://pypi.nvidia.com
 
 # 注意：按顺序安装很重要！
-# 1. 先安装 TensorRT 的依赖库和绑定
-tensorrt-cu12-libs==10.0.1
-tensorrt-cu12-bindings==10.0.1
+# 1. 先安装 TensorRT 的依赖库和绑定（CosyVoice3 使用 10.13.3.9）
+tensorrt-cu12-libs==10.13.3.9
+tensorrt-cu12-bindings==10.13.3.9
 
 # 2. 然后安装 TensorRT 主包（需要上面的依赖）
-tensorrt-cu12==10.0.1
+tensorrt-cu12==10.13.3.9
 
 # 3. 最后安装 ONNX Runtime GPU
 onnxruntime-gpu==1.18.0
