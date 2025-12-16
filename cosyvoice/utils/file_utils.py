@@ -42,17 +42,35 @@ def read_json_lists(list_file):
 
 
 def load_wav(wav, target_sr, min_sr=16000):
-    try:
-        speech, sample_rate = torchaudio.load(wav, backend='soundfile')
-    except Exception:
-        # 尝试使用 librosa 加载（支持 mp4 等更多格式）
-        # 注意：librosa 需要系统安装 ffmpeg
-        import librosa
-        import numpy as np
-        speech, sample_rate = librosa.load(wav, sr=None, mono=False)
+    speech = None
+    # Support loading from torch tensor
+    if isinstance(wav, torch.Tensor):
+        speech = wav
+        # Add batch dimension if needed
         if speech.ndim == 1:
-            speech = speech[np.newaxis, :]
-        speech = torch.from_numpy(speech)
+            speech = speech.unsqueeze(0)
+        # We assume tensor input is already at correct sample rate or handled by caller,
+        # but if we had sample rate info we would resample here. 
+        # Since we don't have original sample rate for tensor, we return as is or rely on caller.
+        # For this function's typical usage, it expects a file path.
+        # If it's a tensor, we assume it's already loaded speech data.
+        sample_rate = target_sr # Assume it matches if passed as tensor, or caller handles it.
+    else:
+        try:
+            speech, sample_rate = torchaudio.load(wav, backend='soundfile')
+        except Exception:
+            # 尝试使用 librosa 加载（支持 mp4 等更多格式）
+            # 注意：librosa 需要系统安装 ffmpeg
+            try:
+                import librosa
+                import numpy as np
+                speech, sample_rate = librosa.load(wav, sr=None, mono=False)
+                if speech.ndim == 1:
+                    speech = speech[np.newaxis, :]
+                speech = torch.from_numpy(speech)
+            except Exception as e:
+                logging.error(f"Failed to load audio {wav}: {e}")
+                raise e
 
     speech = speech.mean(dim=0, keepdim=True)
     if sample_rate != target_sr:
