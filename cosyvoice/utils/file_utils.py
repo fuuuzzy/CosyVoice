@@ -42,7 +42,18 @@ def read_json_lists(list_file):
 
 
 def load_wav(wav, target_sr, min_sr=16000):
-    speech, sample_rate = torchaudio.load(wav, backend='soundfile')
+    try:
+        speech, sample_rate = torchaudio.load(wav, backend='soundfile')
+    except Exception:
+        # 尝试使用 librosa 加载（支持 mp4 等更多格式）
+        # 注意：librosa 需要系统安装 ffmpeg
+        import librosa
+        import numpy as np
+        speech, sample_rate = librosa.load(wav, sr=None, mono=False)
+        if speech.ndim == 1:
+            speech = speech[np.newaxis, :]
+        speech = torch.from_numpy(speech)
+
     speech = speech.mean(dim=0, keepdim=True)
     if sample_rate != target_sr:
         assert sample_rate >= min_sr, 'wav sample rate {} must be greater than {}'.format(sample_rate, target_sr)

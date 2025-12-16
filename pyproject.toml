@@ -47,9 +47,9 @@ dependencies = [
     "rich==13.7.1",
     "soundfile==0.12.1",
     "tensorboard==2.14.0",
-    "torch==2.5.1",
-    "torchaudio==2.5.1",
-    "transformers==4.46.3",
+    "torch",
+    "torchaudio",
+    "transformers>=4.46.3",
     "uvicorn==0.30.0",
     "wetext==0.0.4",
     "wget==3.2",
@@ -67,15 +67,18 @@ dev = [
     "flake8>=6.0",
     "mypy>=1.0",
 ]
-
-# 注意：GPU 相关依赖已移至独立配置文件
-# - requirements-gpu.txt: Linux GPU 加速 (ONNX Runtime GPU + TensorRT)
-# - requirements-vllm.txt: vLLM 加速推理
-# 
-# Linux GPU 服务器安装方法：
-#   uv sync && uv pip install -r requirements-gpu.txt
-# 或使用完整版（包含 vLLM）：
-#   uv sync && uv pip install -r requirements-gpu.txt -r requirements-vllm.txt
+#GPU 加速 (Linux)
+gpu = [
+    "tensorrt-cu12-libs==10.13.3.9; sys_platform == 'linux'",
+    "tensorrt-cu12-bindings==10.13.3.9; sys_platform == 'linux'",
+    "tensorrt-cu12==10.13.3.9; sys_platform == 'linux'",
+    "onnxruntime-gpu==1.18.0; sys_platform == 'linux'",
+]
+#vLLM 加速 (Linux + GPU)
+vllm = [
+    "vllm==0.9.0; sys_platform == 'linux'",
+    "transformers==4.51.3; sys_platform == 'linux'",
+]
 
 [project.urls]
 Homepage = "https://github.com/FunAudioLLM/CosyVoice"
@@ -93,9 +96,21 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["cosyvoice"]
 
-[tool.uv]
-# 基础配置：只使用 PyPI 默认索引
-# GPU 相关的额外索引已移至 requirements-gpu.txt 中
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cuda", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchaudio = [
+    { index = "pytorch-cuda", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+    { index = "pytorch-cuda", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
 [tool.black]
 line-length = 120
@@ -139,4 +154,3 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --tb=short"
-

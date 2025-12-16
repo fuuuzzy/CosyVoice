@@ -84,46 +84,18 @@ echo ""
 
 case $choice in
     1)
-        echo "步骤 4: 安装核心依赖..."
-        uv pip install -e .
-        
-        echo ""
-        echo "步骤 5: 安装 GPU 加速组件..."
-        echo "  5.1 安装 TensorRT 依赖库..."
-        uv pip install tensorrt-cu12-libs==10.13.3.9 tensorrt-cu12-bindings==10.13.3.9 \
-            --extra-index-url https://pypi.nvidia.com \
-            --no-build-isolation
-        
-        echo "  5.2 安装 TensorRT 主包..."
-        uv pip install tensorrt-cu12==10.13.3.9 \
-            --extra-index-url https://pypi.nvidia.com \
-            --no-build-isolation
-        
-        echo "  5.3 安装 ONNX Runtime GPU..."
-        uv pip install onnxruntime-gpu==1.18.0
+        echo "步骤 4: 安装核心依赖和 GPU 组件..."
+        # 使用 pyproject.toml 中的 [gpu] 选项
+        uv pip install -e ".[gpu]" --no-build-isolation \
+            --extra-index-url https://download.pytorch.org/whl/cu121 \
+            --extra-index-url https://pypi.nvidia.com
         ;;
     2)
-        echo "步骤 4: 安装核心依赖..."
-        uv pip install -e .
-        
-        echo ""
-        echo "步骤 5: 安装 GPU 加速组件..."
-        echo "  5.1 安装 TensorRT 依赖库..."
-        uv pip install tensorrt-cu12-libs==10.13.3.9 tensorrt-cu12-bindings==10.13.3.9 \
-            --extra-index-url https://pypi.nvidia.com \
-            --no-build-isolation
-        
-        echo "  5.2 安装 TensorRT 主包..."
-        uv pip install tensorrt-cu12==10.13.3.9 \
-            --extra-index-url https://pypi.nvidia.com \
-            --no-build-isolation
-        
-        echo "  5.3 安装 ONNX Runtime GPU..."
-        uv pip install onnxruntime-gpu==1.18.0
-        
-        echo ""
-        echo "步骤 6: 安装 vLLM..."
-        uv pip install -r requirements-vllm.txt
+        echo "步骤 4: 安装核心依赖、GPU 组件和 vLLM..."
+        # 使用 pyproject.toml 中的 [gpu,vllm] 选项
+        uv pip install -e ".[gpu,vllm]" --no-build-isolation \
+            --extra-index-url https://download.pytorch.org/whl/cu121 \
+            --extra-index-url https://pypi.nvidia.com
         ;;
     *)
         echo "❌ 无效选项"
