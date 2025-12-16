@@ -19,7 +19,7 @@ import torchaudio
 # Add third_party path
 sys.path.append('third_party/Matcha-TTS')
 
-from cosyvoice.cli.cosyvoice import CosyVoice2
+from cosyvoice.cli.cosyvoice import CosyVoice, CosyVoice2, CosyVoice3
 from cosyvoice.utils.file_utils import load_wav
 from cosyvoice.utils.common import set_all_random_seed
 
@@ -94,7 +94,7 @@ def find_reference_audio(reference_dir, subtitle_id, audio_prefix='segment'):
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description='CosyVoice2 语音克隆 - 单条或批量处理模式',
+        description='CosyVoice 语音克隆 (支持 v1/v2/v3) - 单条或批量处理模式',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 单条模式示例:
@@ -244,29 +244,54 @@ def parse_args():
 
 
 def initialize_cosyvoice(model_dir, load_jit, load_trt, load_vllm, fp16):
-    """Initialize CosyVoice2 model"""
-    print(f"初始化 CosyVoice2 模型: {model_dir}")
+    """Initialize CosyVoice model (Auto-detect version)"""
+    print(f"初始化 CosyVoice 模型: {model_dir}")
     print(f"  JIT: {load_jit}, TRT: {load_trt}, vLLM: {load_vllm}, FP16: {fp16}")
-    
-    cosyvoice = CosyVoice2(
-        model_dir,
-        load_jit=load_jit,
-        load_trt=load_trt,
-        load_vllm=load_vllm,
-        fp16=fp16
-    )
-    
-    print(f"模型初始化成功，采样率: {cosyvoice.sample_rate} Hz")
-    return cosyvoice
+
+    model = None
+    if os.path.exists(os.path.join(model_dir, 'cosyvoice3.yaml')):
+        print("检测到 CosyVoice3 模型配置")
+        if load_jit:
+            print("警告: CosyVoice3 不支持 JIT，已忽略该参数")
+        model = CosyVoice3(
+            model_dir,
+            load_trt=load_trt,
+            load_vllm=load_vllm,
+            fp16=fp16
+        )
+    elif os.path.exists(os.path.join(model_dir, 'cosyvoice2.yaml')):
+        print("检测到 CosyVoice2 模型配置")
+        model = CosyVoice2(
+            model_dir,
+            load_jit=load_jit,
+            load_trt=load_trt,
+            load_vllm=load_vllm,
+            fp16=fp16
+        )
+    elif os.path.exists(os.path.join(model_dir, 'cosyvoice.yaml')):
+        print("检测到 CosyVoice v1 模型配置")
+        if load_vllm:
+            print("警告: CosyVoice v1 不支持 vLLM，已忽略该参数")
+        model = CosyVoice(
+            model_dir,
+            load_jit=load_jit,
+            load_trt=load_trt,
+            fp16=fp16
+        )
+    else:
+        raise ValueError(f"未在目录 {model_dir} 中找到有效的配置文件 (cosyvoice.yaml, cosyvoice2.yaml, cosyvoice3.yaml)")
+
+    print(f"模型初始化成功，采样率: {model.sample_rate} Hz")
+    return model
 
 
 def synthesize_with_cosyvoice(cosyvoice, text, prompt_text, prompt_audio_path,
                                output_path, instruct_text='', seed=42):
     """
-    Synthesize speech using CosyVoice2
+    Synthesize speech using CosyVoice
     
     Args:
-        cosyvoice: CosyVoice2 model instance
+        cosyvoice: CosyVoice model instance
         text: Text to synthesize
         prompt_text: Text content of the reference audio
         prompt_audio_path: Path to reference audio file
@@ -284,12 +309,22 @@ def synthesize_with_cosyvoice(cosyvoice, text, prompt_text, prompt_audio_path,
     if instruct_text:
         # Use instruct mode (requires CosyVoice2-Instruct model)
         print(f"  使用指令模式: {instruct_text}")
-        inference_gen = cosyvoice.inference_instruct2(
-            text,
-            instruct_text,
-            prompt_speech_16k,
-            stream=False
-        )
+        
+        if hasattr(cosyvoice, 'inference_instruct2'):
+            inference_gen = cosyvoice.inference_instruct2(
+                text,
+                instruct_text,
+                prompt_speech_16k,
+                stream=False
+            )
+        else:
+            print("  警告: 当前模型不支持 inference_instruct2 (可能是 v1)，将回退到 zero_shot 模式并忽略指令")
+            inference_gen = cosyvoice.inference_zero_shot(
+                text,
+                prompt_text,
+                prompt_speech_16k,
+                stream=False
+            )
     else:
         # Use zero-shot mode
         inference_gen = cosyvoice.inference_zero_shot(
@@ -456,7 +491,7 @@ def main():
         device = args.device
 
     print("=" * 60)
-    print("CosyVoice2 语音克隆脚本")
+    print("CosyVoice 语音克隆脚本")
     print("=" * 60)
     print(f"设备: {device}")
     print(f"输出目录: {args.output}")
@@ -465,7 +500,7 @@ def main():
     # Create output directory
     os.makedirs(args.output, exist_ok=True)
 
-    # Initialize CosyVoice2
+    # Initialize CosyVoice
     cosyvoice = initialize_cosyvoice(
         args.model_dir,
         args.load_jit,
