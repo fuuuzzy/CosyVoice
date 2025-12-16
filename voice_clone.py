@@ -186,7 +186,7 @@ def parse_args():
         '--model-dir',
         type=str,
         default='pretrained_models/CosyVoice2-0.5B',
-        help='CosyVoice2 模型目录'
+        help='CosyVoice 模型目录或 ModelScope ID (如未找到会自动下载)'
     )
 
     parser.add_argument(
@@ -247,6 +247,49 @@ def initialize_cosyvoice(model_dir, load_jit, load_trt, load_vllm, fp16):
     """Initialize CosyVoice model (Auto-detect version)"""
     print(f"初始化 CosyVoice 模型: {model_dir}")
     print(f"  JIT: {load_jit}, TRT: {load_trt}, vLLM: {load_vllm}, FP16: {fp16}")
+
+    # Check if model exists locally
+    is_local_model = False
+    if os.path.exists(model_dir):
+        if any(os.path.exists(os.path.join(model_dir, f)) for f in ['cosyvoice.yaml', 'cosyvoice2.yaml', 'cosyvoice3.yaml']):
+            is_local_model = True
+
+    if not is_local_model:
+        print(f"本地模型未找到或不完整，尝试从 ModelScope 自动下载...")
+        try:
+            from modelscope import snapshot_download
+            
+            # Map common paths to model IDs if the directory doesn't exist
+            model_id = model_dir
+            download_dir = None
+            
+            # Common mappings for convenience
+            if model_dir.endswith("CosyVoice2-0.5B"):
+                model_id = "iic/CosyVoice2-0.5B"
+                download_dir = model_dir
+            elif model_dir.endswith("CosyVoice-300M"):
+                model_id = "iic/CosyVoice-300M"
+                download_dir = model_dir
+            elif "CosyVoice3" in model_dir and "FunAudioLLM" not in model_dir:
+                # Try to map simple v3 path to official ID
+                model_id = "FunAudioLLM/Fun-CosyVoice3-0.5B-2512"
+                download_dir = model_dir
+            
+            print(f"  目标模型 ID: {model_id}")
+            if download_dir:
+                print(f"  下载目录: {download_dir}")
+                model_dir = snapshot_download(model_id, local_dir=download_dir)
+            else:
+                model_dir = snapshot_download(model_id)
+                
+            print(f"  ✓ 模型下载完成: {model_dir}")
+            
+        except ImportError:
+            print("  ✗ 错误: 未安装 modelscope，无法自动下载模型。请运行: pip install modelscope")
+            # Don't raise here, let the file check below fail with a clear path error
+        except Exception as e:
+            print(f"  ✗ 自动下载失败: {e}")
+            print("  请检查网络连接或手动指定正确的模型 ID / 路径")
 
     model = None
     if os.path.exists(os.path.join(model_dir, 'cosyvoice3.yaml')):
