@@ -19,8 +19,7 @@ import torchaudio
 # Add third_party path
 sys.path.append('third_party/Matcha-TTS')
 
-from cosyvoice.cli.cosyvoice import CosyVoice, CosyVoice2, CosyVoice3
-from cosyvoice.utils.file_utils import load_wav
+from cosyvoice.cli.cosyvoice import AutoModel
 from cosyvoice.utils.common import set_all_random_seed
 
 
@@ -255,7 +254,7 @@ def initialize_cosyvoice(model_dir, load_jit, load_trt, load_vllm, fp16):
             is_local_model = True
 
     if not is_local_model:
-        print(f"本地模型未找到或不完整，尝试从 ModelScope 自动下载...")
+        print("本地模型未找到或不完整，尝试从 ModelScope 自动下载...")
         try:
             from modelscope import snapshot_download
             
@@ -291,39 +290,32 @@ def initialize_cosyvoice(model_dir, load_jit, load_trt, load_vllm, fp16):
             print(f"  ✗ 自动下载失败: {e}")
             print("  请检查网络连接或手动指定正确的模型 ID / 路径")
 
-    model = None
+    # Prepare arguments based on model type
+    kwargs = {
+        'model_dir': model_dir,
+        'load_trt': load_trt,
+        'fp16': fp16
+    }
+    
     if os.path.exists(os.path.join(model_dir, 'cosyvoice3.yaml')):
         print("检测到 CosyVoice3 模型配置")
         if load_jit:
             print("警告: CosyVoice3 不支持 JIT，已忽略该参数")
-        model = CosyVoice3(
-            model_dir,
-            load_trt=load_trt,
-            load_vllm=load_vllm,
-            fp16=fp16
-        )
+        kwargs['load_vllm'] = load_vllm
     elif os.path.exists(os.path.join(model_dir, 'cosyvoice2.yaml')):
         print("检测到 CosyVoice2 模型配置")
-        model = CosyVoice2(
-            model_dir,
-            load_jit=load_jit,
-            load_trt=load_trt,
-            load_vllm=load_vllm,
-            fp16=fp16
-        )
+        kwargs['load_jit'] = load_jit
+        kwargs['load_vllm'] = load_vllm
     elif os.path.exists(os.path.join(model_dir, 'cosyvoice.yaml')):
         print("检测到 CosyVoice v1 模型配置")
         if load_vllm:
             print("警告: CosyVoice v1 不支持 vLLM，已忽略该参数")
-        model = CosyVoice(
-            model_dir,
-            load_jit=load_jit,
-            load_trt=load_trt,
-            fp16=fp16
-        )
+        kwargs['load_jit'] = load_jit
     else:
         raise ValueError(f"未在目录 {model_dir} 中找到有效的配置文件 (cosyvoice.yaml, cosyvoice2.yaml, cosyvoice3.yaml)")
 
+    model = AutoModel(**kwargs)
+    
     print(f"模型初始化成功，采样率: {model.sample_rate} Hz")
     return model
 
@@ -342,9 +334,6 @@ def synthesize_with_cosyvoice(cosyvoice, text, prompt_text, prompt_audio_path,
         instruct_text: Natural language instruction (optional)
         seed: Random seed
     """
-    # Load reference audio (16kHz)
-    prompt_speech_16k = load_wav(prompt_audio_path, 16000)
-    
     # Set random seed for reproducibility
     set_all_random_seed(seed)
     
@@ -353,11 +342,19 @@ def synthesize_with_cosyvoice(cosyvoice, text, prompt_text, prompt_audio_path,
         # Use instruct mode (requires CosyVoice2-Instruct model)
         print(f"  使用指令模式: {instruct_text}")
         
+        # Warn if prompt_text is also provided as it will be ignored in instruct mode
+        if prompt_text:
+            print("  注意: 在指令模式下，参考音频的文本内容 (prompt_text) 将被忽略")
+
         if hasattr(cosyvoice, 'inference_instruct2'):
+            # Ensure instruct_text ends with <|endofprompt|>
+            if not instruct_text.endswith('<|endofprompt|>'):
+                instruct_text += '<|endofprompt|>'
+                
             inference_gen = cosyvoice.inference_instruct2(
                 text,
                 instruct_text,
-                prompt_speech_16k,
+                prompt_audio_path,
                 stream=False
             )
         else:
@@ -365,7 +362,7 @@ def synthesize_with_cosyvoice(cosyvoice, text, prompt_text, prompt_audio_path,
             inference_gen = cosyvoice.inference_zero_shot(
                 text,
                 prompt_text,
-                prompt_speech_16k,
+                prompt_audio_path,
                 stream=False
             )
     else:
@@ -373,7 +370,7 @@ def synthesize_with_cosyvoice(cosyvoice, text, prompt_text, prompt_audio_path,
         inference_gen = cosyvoice.inference_zero_shot(
             text,
             prompt_text,
-            prompt_speech_16k,
+            prompt_audio_path,
             stream=False
         )
     
