@@ -130,7 +130,13 @@ def parse_args():
     mode_group.add_argument(
         '--srt',
         type=str,
-        help='[批量模式] SRT 字幕文件路径'
+        help='[批量模式] 目标语言 SRT 字幕文件路径（要生成的内容）'
+    )
+
+    parser.add_argument(
+        '--prompt-srt',
+        type=str,
+        help='[批量模式] 参考音频对应的中文 SRT 字幕文件路径（用于 CosyVoice3 提取 prompt_text）'
     )
 
     # Reference audio
@@ -367,6 +373,14 @@ def synthesize_with_cosyvoice(cosyvoice, text, prompt_text, prompt_audio_path,
             )
     else:
         # Use zero-shot mode
+        
+        # Auto-add prefix for CosyVoice3 if not present in prompt text
+        if "CosyVoice3" in str(type(cosyvoice)) or "CosyVoice3" in cosyvoice.model_dir:
+             prefix = "You are a helpful assistant.<|endofprompt|>"
+             if prompt_text and prefix not in prompt_text:
+                 print(f"  注意: CosyVoice3 建议在参考文本前添加前缀，自动添加: {prefix}")
+                 prompt_text = prefix + prompt_text
+        
         inference_gen = cosyvoice.inference_zero_shot(
             text,
             prompt_text,
@@ -429,8 +443,20 @@ def process_batch_mode(args, cosyvoice):
 
     # Validate SRT file
     if not os.path.exists(args.srt):
-        print(f"错误: SRT 文件不存在: {args.srt}")
+        print(f"错误: 目标 SRT 文件不存在: {args.srt}")
         return
+
+    # Validate Prompt SRT file if provided
+    prompt_subtitles_map = {}
+    if args.prompt_srt:
+        if not os.path.exists(args.prompt_srt):
+            print(f"错误: 参考 SRT 文件不存在: {args.prompt_srt}")
+            return
+        print(f"正在加载参考 SRT 文件: {args.prompt_srt}")
+        prompt_subtitles = parse_srt(args.prompt_srt)
+        # Create a map for quick lookup by ID
+        prompt_subtitles_map = {sub['id']: sub['text'] for sub in prompt_subtitles}
+        print(f"加载了 {len(prompt_subtitles_map)} 条参考字幕")
 
     # Validate reference directory or audio path
     if args.reference_dir and not os.path.isdir(args.reference_dir):
@@ -464,6 +490,15 @@ def process_batch_mode(args, cosyvoice):
         print(f"\n[{idx}/{total}] ID: {subtitle_id}")
         print(f"文本: {text[:80]}{'...' if len(text) > 80 else ''}")
 
+        # Get prompt text from prompt SRT if available, otherwise use command line arg
+        current_prompt_text = args.prompt_text
+        if args.prompt_srt:
+            if subtitle_id in prompt_subtitles_map:
+                current_prompt_text = prompt_subtitles_map[subtitle_id]
+                print(f"参考文本 (来自 SRT): {current_prompt_text[:80]}...")
+            else:
+                print(f"  ⚠ 警告: 参考 SRT 中未找到 ID {subtitle_id}，将回退到默认 prompt_text")
+
         # Find reference audio
         if use_single_audio:
             ref_audio = args.audio_path
@@ -493,7 +528,7 @@ def process_batch_mode(args, cosyvoice):
             synthesize_with_cosyvoice(
                 cosyvoice=cosyvoice,
                 text=text,
-                prompt_text=args.prompt_text,
+                prompt_text=current_prompt_text,
                 prompt_audio_path=ref_audio,
                 output_path=output_path,
                 instruct_text=args.instruct,
